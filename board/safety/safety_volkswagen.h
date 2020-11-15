@@ -6,6 +6,7 @@ const int VOLKSWAGEN_MAX_RATE_UP = 10;              // 5.0 Nm/s RoC limit (EPS r
 const int VOLKSWAGEN_MAX_RATE_DOWN = 10;            // 5.0 Nm/s RoC limit (EPS rack has own soft-limit of 5.0 Nm/s)
 const int VOLKSWAGEN_DRIVER_TORQUE_ALLOWANCE = 80;
 const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
+const int VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD = 475;  // ratio between offset and gain from dbc file
 
 // Safety-relevant CAN messages for the Volkswagen MQB platform
 #define MSG_ESP_19      0x0B2   // RX from ABS, for wheel speeds
