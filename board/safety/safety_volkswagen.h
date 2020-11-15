@@ -7,6 +7,9 @@ const int VOLKSWAGEN_MAX_RATE_DOWN = 10;            // 5.0 Nm/s RoC limit (EPS r
 const int VOLKSWAGEN_DRIVER_TORQUE_ALLOWANCE = 80;
 const int VOLKSWAGEN_DRIVER_TORQUE_FACTOR = 3;
 const int VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD = 475;  // ratio between offset and gain from dbc file
+#define VOLKSWAGEN_GET_INTERCEPTOR(msg) (((GET_BYTE((msg), 0) << 8) + GET_BYTE((msg), 1) + (GET_BYTE((msg), 2) << 8) + GET_BYTE((msg), 3)) / 2) // avg between 2 tracks
+
+
 
 // Safety-relevant CAN messages for the Volkswagen MQB platform
 #define MSG_ESP_19      0x0B2   // RX from ABS, for wheel speeds
@@ -228,7 +231,7 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     if (addr == MSG_GAS_SENSOR) {
       gas_interceptor_detected = 1;
       controls_allowed = 1;
-      int gas_interceptor = GET_INTERCEPTOR(to_push);
+      int gas_interceptor = VOLKSWAGEN_GET_INTERCEPTOR(to_push);
       if ((gas_interceptor > VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD) &&
           (gas_interceptor_prev <= VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD)) {
         controls_allowed = 0;
