@@ -43,7 +43,7 @@ const int VOLKSWAGEN_MQB_RX_CHECKS_LEN = sizeof(volkswagen_mqb_rx_checks) / size
 #define MSG_LDW_1       0x5BE   // TX by OP, Lane line recognition and text alerts
 
 // Transmit of GRA_Neu is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
-const CanMsg VOLKSWAGEN_PQ_TX_MSGS[] = {{MSG_HCA_1, 0, 5}, {MSG_GRA_NEU, 0, 4}, {MSG_GRA_NEU, 2, 4}, {MSG_LDW_1, 0, 8}, {MSG_MOB_1, 1, 6}, {MSG_GAS_COMMAND, 2, 6}};
+const CanMsg VOLKSWAGEN_PQ_TX_MSGS[] = {{MSG_HCA_1, 0, 5}, {MSG_GRA_NEU, 0, 4}, {MSG_GRA_NEU, 1, 4}, {MSG_GRA_NEU, 2, 4}, {MSG_LDW_1, 0, 8}, {MSG_MOB_1, 1, 6}, {MSG_GAS_COMMAND, 2, 6}};
 const int VOLKSWAGEN_PQ_TX_MSGS_LEN = sizeof(VOLKSWAGEN_PQ_TX_MSGS) / sizeof(VOLKSWAGEN_PQ_TX_MSGS[0]);
 
 AddrCheckStruct volkswagen_pq_rx_checks[] = {
@@ -223,15 +223,27 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
       update_sample(&torque_driver, torque_driver_new);
     }
 
+    // Exit controls on rising edge of interceptor gas press
+    if ((bus == 2) && (addr == MSG_GAS_SENSOR)) {
+      gas_interceptor_detected = 1;
+      controls_allowed = 1;
+      int gas_interceptor = GET_INTERCEPTOR(to_push);
+      if ((gas_interceptor > VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD) &&
+          (gas_interceptor_prev <= VOLKSWAGEN_GAS_INTERCEPTOR_THRSLD)) {
+        controls_allowed = 0;
+      }
+      gas_interceptor_prev = gas_interceptor;
+    }
+
     // Update ACC status from ECU for controls-allowed state
     // Signal: Motor_2.GRA_Status
-    if (addr == MSG_MOTOR_2) {
+    if ((addr == MSG_MOTOR_2) && !gas_interceptor_detected) {
       int acc_status = (GET_BYTE(to_push, 2) & 0xC0) >> 6;
       controls_allowed = ((acc_status == 1) || (acc_status == 2)) ? 1 : 0;
     }
 
     // Signal: Motor_3.Fahrpedal_Rohsignal
-    if (addr == MSG_MOTOR_3) {
+    if ((addr == MSG_MOTOR_3) && !gas_interceptor_detected) {
       gas_pressed = (GET_BYTE(to_push, 2));
     }
 
