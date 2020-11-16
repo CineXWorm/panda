@@ -201,13 +201,13 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
   bool valid = addr_safety_check(to_push, volkswagen_pq_rx_checks, VOLKSWAGEN_PQ_RX_CHECKS_LEN,
                                 volkswagen_get_checksum, volkswagen_pq_compute_checksum, volkswagen_pq_get_counter);
 
-  if (valid && (GET_BUS(to_push) == 0)) {
+  if (valid) {
     int addr = GET_ADDR(to_push);
 
     // Update in-motion state by sampling front wheel speeds
     // Signal: Bremse_3.Radgeschw__VL_4_1 (front left)
     // Signal: Bremse_3.Radgeschw__VR_4_1 (front right)
-    if (addr == MSG_BREMSE_3) {
+    if ((addr == MSG_BREMSE_3) && (GET_BUS(to_push) == 0)) {
       int wheel_speed_fl = (GET_BYTE(to_push, 0) | (GET_BYTE(to_push, 1) << 8)) >> 1;
       int wheel_speed_fr = (GET_BYTE(to_push, 2) | (GET_BYTE(to_push, 3) << 8)) >> 1;
       // Check for average front speed in excess of 0.3m/s, 1.08km/h
@@ -218,7 +218,7 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     // Update driver input torque samples
     // Signal: Lenkhilfe_3.LH3_LM (absolute torque)
     // Signal: Lenkhilfe_3.LH3_LMSign (direction)
-    if (addr == MSG_LENKHILFE_3) {
+    if ((addr == MSG_LENKHILFE_3) && (GET_BUS(to_push) == 0)) {
       int torque_driver_new = GET_BYTE(to_push, 2) | ((GET_BYTE(to_push, 3) & 0x3) << 8);
       int sign = (GET_BYTE(to_push, 3) & 0x4) >> 2;
       if (sign == 1) {
@@ -228,7 +228,7 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     }
 
     // Exit controls on rising edge of interceptor gas press
-    if (addr == MSG_GAS_SENSOR) {
+    if ((addr == MSG_GAS_SENSOR) && (GET_BUS(to_push) == 2)) {
       gas_interceptor_detected = 1;
       controls_allowed = 1;
       int gas_interceptor = VOLKSWAGEN_GET_INTERCEPTOR(to_push);
@@ -241,18 +241,18 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
     // Update ACC status from ECU for controls-allowed state
     // Signal: Motor_2.GRA_Status
-    if ((addr == MSG_MOTOR_2) && !gas_interceptor_detected) {
+    if ((addr == MSG_MOTOR_2) && !gas_interceptor_detected && (GET_BUS(to_push) == 0)) {
       int acc_status = (GET_BYTE(to_push, 2) & 0xC0) >> 6;
       controls_allowed = ((acc_status == 1) || (acc_status == 2)) ? 1 : 0;
     }
 
     // Signal: Motor_3.Fahrpedal_Rohsignal
-    if ((addr == MSG_MOTOR_3) && !gas_interceptor_detected) {
+    if ((addr == MSG_MOTOR_3) && !gas_interceptor_detected && (GET_BUS(to_push) == 0)) {
       gas_pressed = (GET_BYTE(to_push, 2));
     }
 
     // Signal: Motor_2.Bremslichtschalter
-    if (addr == MSG_MOTOR_2) {
+    if ((addr == MSG_MOTOR_2) && (GET_BUS(to_push) == 0)) {
       brake_pressed = (GET_BYTE(to_push, 2) & 0x1);
     }
 
